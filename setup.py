@@ -25,7 +25,7 @@ setup(
     install_requires=[
         'numpy >= 1.17',
         'scipy',
-        'numba > 0.46',
+        'numba > 0.46, < 0.57',     # Avoid numba.generated_jit deprecation warning',
         'h5py',
         'sparse',
     ],
