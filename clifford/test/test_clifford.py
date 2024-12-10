@@ -12,6 +12,8 @@ from clifford import Cl, randomMV, Frame, \
 
 import clifford
 
+from . import rng  # noqa: F401
+
 
 def equivalent_up_to_scale(a, b):
     return (a / b).grades() == {0}
@@ -53,14 +55,14 @@ class TestClifford:
     def algebra(self, request, g3, g4, g5):
         return {3: g3, 4: g4, 5: g5}[request.param]
 
-    def test_inverse(self, algebra):
+    def test_inverse(self, algebra, rng):  # noqa: F811
         layout, blades = algebra, algebra.blades
         a = 1. + blades['e1']
         with pytest.raises(ValueError):
             1 / a
         for i in range(10):
-            a = randomMV(layout, grades=[0, 1])
-            denominator = float(a(1)**2-a(0)**2)
+            a = randomMV(layout, grades=[0, 1], rng=rng)
+            denominator = (a(1)**2)[()]-(a[()]**2)
             if abs(denominator) > 1.e-5:
                 a_inv = (-a(0)/denominator) + ((1./denominator) * a(1))
                 assert abs((a * a_inv)-1.) < 1.e-11
@@ -85,18 +87,18 @@ class TestClifford:
         assert ret == 1
         assert ret.value.dtype == e1.value.dtype
 
-    def test_grade_masks(self, algebra):
+    def test_grade_masks(self, algebra, rng):  # noqa: F811
         layout, blades = algebra, algebra.blades
-        A = layout.randomMV()
+        A = layout.randomMV(rng=rng)
         for i in range(layout.dims + 1):
             np.testing.assert_almost_equal(A(i).value, A.value*layout.grade_mask(i))
 
-    def test_rotor_mask(self, algebra):
+    def test_rotor_mask(self, algebra, rng):  # noqa: F811
         layout, blades = algebra, algebra.blades
         rotor_m = layout.rotor_mask
         rotor_m_t = np.zeros(layout.gaDims)
         for _ in range(10):
-            rotor_m_t += 100*np.abs(layout.randomRotor().value)
+            rotor_m_t += 100*np.abs(layout.randomRotor(rng=rng).value)
         np.testing.assert_almost_equal(rotor_m_t > 0, rotor_m)
 
     def test_exp(self, g3):
@@ -137,7 +139,7 @@ class TestClifford:
 
         B = layout.MultiVector(valB)
         expB = layout.MultiVector(valexpB)
-        np.testing.assert_almost_equal(np.exp(B)[0].value, expB.value)
+        np.testing.assert_almost_equal(np.exp(B).value, expB.value)
 
     def test_inv_g4(self, g4):
         '''
@@ -196,7 +198,74 @@ class TestClifford:
 
         assert 1 + e1 == e1 + np.float64(1)
 
-    def test_array_control(self, g3):
+    def _random_value_array(self, layout, Nrows, Ncolumns, rng):  # noqa: F811
+        value_array = np.zeros((Nrows, Ncolumns, layout.gaDims))
+        for i in range(Nrows):
+            for j in range(Ncolumns):
+                value_array[i, j, :] = layout.randomMV(rng=rng).value
+        return value_array
+
+    def test_2d_mv_array(self, g3, rng):  # noqa: F811
+        layout, blades = g3, g3.blades
+        Nrows = 2
+        Ncolumns = 3
+        value_array_a = self._random_value_array(g3, Nrows, Ncolumns, rng)
+        value_array_b = self._random_value_array(g3, Nrows, Ncolumns, rng)
+
+        mv_array_a = MVArray.from_value_array(layout, value_array_a)
+        assert mv_array_a.shape == (Nrows, Ncolumns)
+        mv_array_b = MVArray.from_value_array(layout, value_array_b)
+        assert mv_array_b.shape == (Nrows, Ncolumns)
+
+        # check properties of the array are preserved (no need to check both a and b)
+        np.testing.assert_array_equal(mv_array_a.value, value_array_a)
+        assert mv_array_a.value.dtype == value_array_a.dtype
+        assert type(mv_array_a.value) == type(value_array_a)
+
+        # Check addition
+        mv_array_sum = mv_array_a + mv_array_b
+        array_sum = value_array_a + value_array_b
+        np.testing.assert_array_equal(mv_array_sum.value, array_sum)
+
+        # Check elementwise gp
+        mv_array_gp = mv_array_a * mv_array_b
+        value_array_gp = np.zeros((Nrows, Ncolumns, layout.gaDims))
+        for i in range(Nrows):
+            for j in range(Ncolumns):
+                value_array_gp[i, j, :] = layout.gmt_func(value_array_a[i, j, :], value_array_b[i, j, :])
+        np.testing.assert_array_equal(mv_array_gp.value, value_array_gp)
+
+        # Check elementwise op
+        mv_array_op = mv_array_a ^ mv_array_b
+        value_array_op = np.zeros((Nrows, Ncolumns, layout.gaDims))
+        for i in range(Nrows):
+            for j in range(Ncolumns):
+                value_array_op[i, j, :] = layout.omt_func(value_array_a[i, j, :], value_array_b[i, j, :])
+        np.testing.assert_array_equal(mv_array_op.value, value_array_op)
+
+        # Check elementwise ip
+        mv_array_ip = mv_array_a | mv_array_b
+        value_array_ip = np.zeros((Nrows, Ncolumns, layout.gaDims))
+        for i in range(Nrows):
+            for j in range(Ncolumns):
+                value_array_ip[i, j, :] = layout.imt_func(value_array_a[i, j, :], value_array_b[i, j, :])
+        np.testing.assert_array_equal(mv_array_ip.value, value_array_ip)
+
+    def test_array_0d(self, g3):
+        layout, blades = g3, g3.blades
+        e1 = blades['e1']
+
+        arr = np.asanyarray(e1)
+        assert isinstance(arr, MVArray)
+        assert arr.shape == ()
+        assert arr[()] is e1
+
+        arr = clifford.array(e1)
+        assert isinstance(arr, MVArray)
+        assert arr.shape == ()
+        assert arr[()] is e1
+
+    def test_array_control(self, g3, rng):  # noqa: F811
         '''
         test methods to take control addition from numpy arrays
         '''
@@ -206,8 +275,7 @@ class TestClifford:
         e12 = blades['e12']
 
         for i in range(100):
-
-            number_array = np.random.rand(4)
+            number_array = rng.random(4)
 
             output = e12+(e1*number_array)
             output2 = MVArray([e12+(e1*n) for n in number_array])
@@ -233,20 +301,20 @@ class TestClifford:
             output2 = MVArray([((e1 / n)*e3)/e12 for n in number_array])
             np.testing.assert_almost_equal(output, output2)
 
-    def test_array_overload(self, algebra):
+    def test_array_overload(self, algebra, rng):  # noqa: F811
         '''
         test overload operations
         '''
         layout, blades = algebra, algebra.blades
-        test_array = MVArray([layout.randomMV() for i in range(100)])
+        test_array = MVArray([layout.randomMV(rng=rng) for i in range(100)])
 
         normed_array = test_array.normal()
         other_array = np.array([t.normal().value for t in test_array])
-        np.testing.assert_almost_equal(normed_array.value, other_array)
+        np.testing.assert_array_equal(normed_array.value, other_array)
 
         dual_array = test_array.dual()
         other_array_2 = np.array([t.dual().value for t in test_array])
-        np.testing.assert_almost_equal(dual_array.value, other_array_2)
+        np.testing.assert_array_equal(dual_array.value, other_array_2)
 
     def test_comparison_operators(self, g3):
         layout, blades = g3, g3.blades
@@ -326,6 +394,7 @@ class TestClifford:
         e1 = blades['e1'].astype(dtype)
         e2 = blades['e2'].astype(dtype)
         assert func(e1, np.int8(1)).value.dtype == dtype
+        assert func(np.int8(1), e1).value.dtype == dtype
         assert func(e1, e2).value.dtype == dtype
 
     @pytest.mark.parametrize('func', [
@@ -333,6 +402,9 @@ class TestClifford:
         operator.pos,
         operator.neg,
         MultiVector.gradeInvol,
+        MultiVector.dual,
+        MultiVector.right_complement,
+        MultiVector.left_complement,
     ])
     def test_unary_op_preserves_dtype(self, func, g3):
         """ test that simple unary ops on blades do not promote types """
@@ -487,11 +559,11 @@ class TestBasicConformal41:
         e4 = layout.blades['e4']
         e5 = layout.blades['e5']
 
-        assert (e1 * e1)[0] == 1
-        assert (e2 * e2)[0] == 1
-        assert (e3 * e3)[0] == 1
-        assert (e4 * e4)[0] == 1
-        assert (e5 * e5)[0] == -1
+        assert (e1 * e1)[()] == 1
+        assert (e2 * e2)[()] == 1
+        assert (e3 * e3)[()] == 1
+        assert (e4 * e4)[()] == 1
+        assert (e5 * e5)[()] == -1
 
     def test_vee(self, g3c):
         layout = g3c
@@ -646,24 +718,24 @@ class TestBasicAlgebra:
     def algebra(self, request, g3, g4, g3c):
         return [g3, g4, g3c][request.param]
 
-    def test_grade_obj(self, algebra):
+    def test_grade_obj(self, algebra, rng):  # noqa: F811
         layout = algebra
         for i in range(len(layout.sig)+1):
-            mv = layout.randomMV()(i)
+            mv = layout.randomMV(rng=rng)(i)
             assert i == grade_obj(mv)
 
-    def test_left_multiplication_matrix(self, algebra):
+    def test_left_multiplication_matrix(self, algebra, rng):  # noqa: F811
         layout = algebra
         for i in range(1000):
-            mv = layout.randomMV()
-            mv2 = layout.randomMV()
+            mv = layout.randomMV(rng=rng)
+            mv2 = layout.randomMV(rng=rng)
             np.testing.assert_almost_equal(np.matmul(layout.get_left_gmt_matrix(mv), mv2.value), (mv*mv2).value)
 
-    def test_right_multiplication_matrix(self, algebra):
+    def test_right_multiplication_matrix(self, algebra, rng):  # noqa: F811
         layout = algebra
         for i in range(1000):
-            a = layout.randomMV()
-            b = layout.randomMV()
+            a = layout.randomMV(rng=rng)
+            b = layout.randomMV(rng=rng)
             b_right = layout.get_right_gmt_matrix(b)
             res = a*b
             res2 = layout.MultiVector(value=b_right@a.value)
@@ -741,18 +813,17 @@ class TestFrame:
     @pytest.mark.parametrize(('p', 'q'), [
         (2, 0), (3, 0), (4, 0)
     ])
-    def test_frame_inv(self, p, q):
+    def test_frame_inv(self, p, q, rng):  # noqa: F811
         layout, blades = Cl(p, q)
-        A = Frame(layout.randomV(p + q))
+        A = Frame(layout.randomV(p + q, rng=rng))
         self.check_inv(A)
 
     @pytest.mark.parametrize(('p', 'q'), [
         (2, 0), (3, 0), (4, 0)
     ])
-    def test_innermorphic(self, p, q):
+    def test_innermorphic(self, p, q, rng):  # noqa: F811
         layout, blades = Cl(p, q)
-
-        A = Frame(layout.randomV(p+q))
-        R = layout.randomRotor()
+        A = Frame(layout.randomV(p+q, rng=rng))
+        R = layout.randomRotor(rng=rng)
         B = Frame([R*a*~R for a in A])
         assert A.is_innermorphic_to(B)

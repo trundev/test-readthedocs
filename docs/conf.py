@@ -53,9 +53,12 @@ extensions = [
     'IPython.sphinxext.ipython_console_highlighting',
     #'numpydoc',
     'sphinx.ext.viewcode',
+    'sphinxcontrib.bibtex',
 
     #'sphinx.ext.mathjax',
 ]
+
+bibtex_bibfiles = ['refs.bib']
 
 nbsphinx_execute = 'always'
 nbsphinx_allow_errors = True
@@ -69,9 +72,14 @@ napoleon_include_init_with_doc= False
 nbsphinx_timeout = 60
 
 # This is processed by Jinja2 and inserted before each notebook
+# Some change in dependencies made us need to replace `var` with
+# `env.config.html_context['var']`.
 nbsphinx_prolog = r"""
 {% set docname = 'docs/' + env.doc2path(env.docname, base=None) %}
-{% set git_ref = 'master' if '.' not in env.config.current_version else 'v' + env.config.release %}
+{% set git_ref = 'master' if not env.config.html_context['READTHEDOCS'] else
+                 env.config.html_context['github_version']
+                 if '.' not in env.config.html_context['current_version'] else
+                 'v' + env.config.release %}
 .. raw:: html
 
     <div class="admonition note">
