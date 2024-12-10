@@ -5,7 +5,7 @@
 [![DOI](https://zenodo.org/badge/26588915.svg)](https://zenodo.org/badge/latestdoi/26588915)
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/pygae/clifford/master?filepath=examples%2Fg3c.ipynb) 
 [![Documentation Status](https://readthedocs.org/projects/clifford/badge/?version=latest)](http://clifford.readthedocs.io/en/latest/?badge=latest)
-[![Build Status](https://travis-ci.org/pygae/clifford.svg?branch=master)](https://travis-ci.org/pygae/clifford)
+[![Build Status](https://github.com/pygae/clifford/actions/workflows/python-package.yml/badge.svg?branch=master)](https://github.com/pygae/clifford/actions/workflows/python-package.yml)
 [![Build Status](https://dev.azure.com/hadfieldhugo/clifford/_apis/build/status/pygae.clifford?branchName=master)](https://dev.azure.com/hadfieldhugo/clifford/_build/latest?definitionId=1&branchName=master)
 [![codecov](https://codecov.io/gh/pygae/clifford/branch/master/graph/badge.svg)](https://codecov.io/gh/pygae/clifford)
 
@@ -24,6 +24,20 @@ Scalars, vectors, and higher-grade entities can be mixed freely and consistently
 
 ![Visual explanation of blades](https://raw.githubusercontent.com/pygae/clifford/master/docs/_static/blades.png)
 
+
+Quick Installation
+------------------
+Requires Python version >=3.5
+
+Install using `conda`:
+```
+conda install clifford -c conda-forge
+```
+Install using `pip`:
+```
+pip3 install clifford
+```
+[Detailed instructions](https://clifford.readthedocs.io/en/latest/installation.html)
 
 Quickstart
 ----------
@@ -44,7 +58,7 @@ Syntax Summary
 
 | Syntax  | Operation |
 |:-:|:-:|
-| \| |  Symetric inner product |
+| \| |  Symmetric inner product |
 | << |  Left contraction |
 |  ^ | Outer product  |
 | *  |  Geometric product |
@@ -60,27 +74,4 @@ For installation instructions, api documention, and tutorials, [head over to our
 Citing This Library
 -------------------
 
-As linked at the top of this page, `clifford` is published to zenodo.
-DOI [10.5281/zenodo.1453978](https://doi.org/10.5281/zenodo.1453978) refers to all versions of clifford.
-
-
-To obtain BibTex citation information for a _specific_ release (recommended):
-
-* Run `python -m pip show clifford` to determine which version you are using (or print `clifford.__version__` from python)
-* Click on the corresponding version from [this list of versions](https://zenodo.org/search?page=1&size=20&q=conceptrecid:1453978&sort=-version&all_versions=True)
-* Scroll down to the bottom of the page, and click the "BibTex" link in the "Export" sidebar
-
-If you want to cite all releases, use:
-```tex
-@software{python_clifford,
-  author       = {Alex Arsenovic and
-                  Hugo Hadfield and
-                  Eric Wieser and
-                  Robert Kern and
-                  {The Pygae Team}},
-  title        = {pygae/clifford},
-  publisher    = {Zenodo},
-  doi          = {10.5281/zenodo.1453978},
-  url          = {https://doi.org/10.5281/zenodo.1453978}
-}
-```
+For citation information, see [our `CITATION.md` file](https://github.com/pygae/clifford/blob/master/CITATION.md).

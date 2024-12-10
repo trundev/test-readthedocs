@@ -23,10 +23,9 @@ setup(
     url='http://clifford.readthedocs.io',
     packages=find_packages(),
     install_requires=[
-        'numpy',
+        'numpy >= 1.17',
         'scipy',
-        # 0.50.0 is a breaking API change
-        'numba > 0.46, != 0.49.0rc1, < 0.50.0',
+        'numba > 0.46',
         'h5py',
         'sparse',
     ],

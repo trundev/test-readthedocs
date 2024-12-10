@@ -1,11 +1,13 @@
 import numpy as np
 import pytest
-import numba
 
 from clifford import Cl, conformalize, _powerset
+from clifford._numba_utils import DISABLE_JIT
+
+from . import rng  # noqa: F401
 
 too_slow_without_jit = pytest.mark.skipif(
-    numba.config.DISABLE_JIT, reason="test is too slow without JIT"
+    DISABLE_JIT, reason="test is too slow without JIT"
 )
 
 
@@ -19,7 +21,19 @@ class TestInitialisation:
         for x in range(7, 9)
     ])
     def test_speed(self, n, benchmark):
-        benchmark(Cl, n)
+        def generate_algebra():
+            layout = Cl(n)[0]
+            layout.gmt_func
+            layout.imt_func
+            layout.omt_func
+            layout.lcmt_func
+            layout.adjoint_func
+            layout.left_complement_func
+            layout.right_complement_func
+            layout.dual_func
+            layout.vee_func
+            layout.inv_func
+        benchmark(generate_algebra)
 
     @too_slow_without_jit
     @pytest.mark.veryslow
@@ -28,11 +42,11 @@ class TestInitialisation:
         [Cl(i) for i in [4]] + [conformalize(Cl(3)[0])],
         ids=['Cl(4)', 'conformalize(Cl(3))']
     )
-    def test_sparse_multiply(self, algebra):
+    def test_sparse_multiply(self, algebra, rng):  # noqa: F811
         layout = algebra[0]
         # Make two random multivectors
-        a = layout.randomMV()
-        b = layout.randomMV()
+        a = layout.randomMV(rng=rng)
+        b = layout.randomMV(rng=rng)
 
         # Choose the grades we care about.
         # We skip the cases of:

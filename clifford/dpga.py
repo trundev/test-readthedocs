@@ -1,5 +1,5 @@
-""" 
-The Cl(4,4) DPGA also known as `Mother Algebra' of Goldman and Mann. see:
+"""
+The Cl(4,4) DPGA also known as ``Mother Algebra`` of Goldman and Mann. see:
 
 R(4, 4) As a Computational Framework for 3-Dimensional Computer Graphics
 Ron Goldman and Stephen Mann
@@ -52,7 +52,7 @@ def up(threedDvec):
 
 
 def down(pnt):
-    return np.array([(pnt|wis)[0] for wis in [w1s, w2s, w3s]])/((pnt|w0s)[0])
+    return np.array([(pnt|wis)[()] for wis in [w1s, w2s, w3s]])/((pnt|w0s)[()])
 
 
 def dual_point(point):
